@@ -39,7 +39,7 @@ def main():
     active = [i for i in incidents if i["status"] != "Resolved"]
     source_label = "Simulated weather" if weather["simulated"] else "Live weather · Open-Meteo"
     data_label = "Submitted reports" if workspace == "Live" else "Demo workspace"
-    st.markdown(f'<div class="pulse-topline"><span>Karachi / City operations</span><span>{data_label} · {source_label} · {local_time(clock)} PKT</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="pulse-topline"><span><b>PULSE</b> / Karachi city intelligence</span><span>{data_label} · {source_label} · {local_time(clock)} PKT</span></div>', unsafe_allow_html=True)
     subtitles = {
         "Command Center": "Priority incidents and recent reports.",
         "Report an Issue": "Describe the issue and attach a photo if available.",

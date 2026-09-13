@@ -35,7 +35,7 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
     inc = next(i for i in incidents if i["id"] == iid)
     signature = hashlib.sha256(json.dumps({"id": iid, "reports": sorted(inc["related"].report_id),
         "factors": inc["factors"], "weather": inc["weather"], "model": model}, sort_keys=True).encode()).hexdigest()
-    if st.button("Explain with AI", disabled=not (key and consent), key=prefix+"_generate"):
+    if st.button("Explain with AI", disabled=not (key and consent), key=prefix+"_generate", help="Optional Gemini explanation. Enable AI processing in Settings."):
         with st.spinner("Preparing a grounded hypothesis and response…"):
             st.session_state.responses[signature] = response_agent(inc, key, model)
     response = st.session_state.responses.get(signature) or response_agent(inc)
@@ -57,8 +57,9 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
         st.markdown("**Recommended inspection points**")
         # Deterministic location recommendation always remains visible.
         st.write(inc["inspection"])
-        for action in response["inspection"]:
-            st.write("• " + action)
+        for action in dict.fromkeys(response["inspection"]):
+            if action.strip() != inc["inspection"].strip():
+                st.write("• " + action)
         st.markdown("**Suggested immediate response**")
         st.write(response["immediate_response"])
         st.markdown("**Next steps**")
@@ -123,35 +124,31 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
 
 
 def render_incidents(incidents, key, model, consent):
-    st.subheader("Emerging incident queue")
     selected = st.session_state.pop("queue_pending_incident", None)
     if selected:
-        match = next((i for i in incidents if i["id"] == selected), None)
-        if match:
-            detail_view([match], key, model, consent, "selected_review", selected)
-            st.divider()
-            st.session_state.queue_reviewed_incident = selected
-        else:
-            st.info("This incident no longer meets active detection rules. Its reports remain in Report records.")
-    elif st.session_state.get("queue_reviewed_incident"):
-        match = next((i for i in incidents if i["id"] == st.session_state.queue_reviewed_incident), None)
-        if match:
-            detail_view([match], key, model, consent, "selected_review")
-            st.divider()
-    a, b, c, d = st.columns(4)
-    areas = a.multiselect("Area", list(AREAS))
-    cats = b.multiselect("Category", CATEGORIES)
-    statuses = c.multiselect("Review status", ["Monitoring", "Acknowledged", "Inspecting", "Resolved"])
-    minimum = d.slider("Minimum risk", 0, 100, 0)
-    order = st.selectbox("Sort by", ["Highest risk", "Latest activity", "Most signals", "Highest confidence"])
+        st.session_state.queue_reviewed_incident = selected
+        for name, value in [("queue_area_filter", []), ("queue_category_filter", []),
+                            ("queue_status_filter", []), ("queue_risk_filter", 0)]:
+            st.session_state[name] = value
+    with st.expander("Filter and sort incidents"):
+        a, b = st.columns(2)
+        areas = a.multiselect("Area", list(AREAS), key="queue_area_filter")
+        cats = b.multiselect("Category", CATEGORIES, key="queue_category_filter")
+        statuses = a.multiselect("Review status", ["Monitoring", "Acknowledged", "Inspecting", "Resolved"], key="queue_status_filter")
+        minimum = b.slider("Minimum risk", 0, 100, 0, key="queue_risk_filter")
+        order = st.selectbox("Sort by", ["Highest risk", "Latest activity", "Most signals", "Highest confidence"])
     filtered = [i for i in incidents if i["risk"] >= minimum
         and (not areas or set(areas) & set(i["members"].area))
         and (not cats or set(cats) & set(i["categories"])) and (not statuses or i["status"] in statuses)]
     field = {"Highest risk": "risk", "Latest activity": "latest", "Most signals": "signals", "Highest confidence": "confidence"}[order]
     filtered.sort(key=lambda x: x[field], reverse=True)
-    st.dataframe(incident_table(filtered), hide_index=True, use_container_width=True)
-    with st.expander("Browse incident details", expanded=not bool(st.session_state.get("queue_reviewed_incident"))):
-        detail_view(filtered, key, model, consent, "queue")
+    if selected and selected not in [i["id"] for i in incidents]:
+        st.info("This incident is no longer active. Its reports remain in Report records.")
+    prefix = "selected_review" if st.session_state.get("queue_reviewed_incident") else "queue"
+    detail_view(filtered, key, model, consent, prefix, selected)
+    if filtered:
+        with st.expander(f"Incident register · {len(filtered)} matching"):
+            st.dataframe(incident_table(filtered), hide_index=True, use_container_width=True)
     archived = [{"Incident": iid, "Area": record.get("summary", {}).get("area", ""),
                  "Issue": record.get("summary", {}).get("title", ""),
                  "Review status": record["status"], "Detection": "No longer meets active detection rules"}

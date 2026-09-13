@@ -25,7 +25,7 @@ def report_map_detail(frame, selection):
         st.caption(row.location_basis)
 
 
-def map_view(frame, incidents, key):
+def map_view(frame, incidents, key, compact=False):
     fig = go.Figure()
     palette = ["#4d7367", "#769787", "#a98c65", "#7a8390", "#618894",
                "#457385", "#a58355", "#8a7b92", "#a76e6a", "#909b92"]
@@ -63,12 +63,13 @@ def map_view(frame, incidents, key):
             marker=dict(size=15, color="#202e2b"), customdata=[["REPORT:"+r.report_id]],
             text=[html.escape(r.complaint_text[:140])], hovertemplate="%{text}<extra></extra>"))
     fig.update_layout(map=dict(style="carto-positron", center=center, zoom=12 if not focus.empty else 10),
-        height=440, margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=-.02),
+        height=490 if compact else 520, showlegend=not compact,
+        margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", y=-.02),
         paper_bgcolor="rgba(0,0,0,0)", font_color="#52675d", clickmode="event+select")
     revision = hashlib.sha256(json.dumps([list(frame.report_id), list(frame.status),
         [(i["id"], i["risk"], i["signals"]) for i in incidents]], default=str).encode()).hexdigest()[:12]
     event = st.plotly_chart(fig, use_container_width=True, key=key+"_"+revision, on_select="rerun", selection_mode="points")
-    st.caption("Small points are reports; shared points grow with report count. Incident circles grow with distinct signals and risk. Select a point for details.")
+    st.caption("Small points: reports · Large circles: incidents · Select a point to inspect")
     points = event.get("selection", {}).get("points", []) if event else []
     for point in reversed(points):
         data = point.get("customdata", [])
@@ -78,11 +79,11 @@ def map_view(frame, incidents, key):
 
 
 def render_map(frame, active, key, model, consent):
-    st.subheader("City signal map")
-    categories = st.multiselect("Report categories", CATEGORIES, default=CATEGORIES)
-    minimum = st.slider("Minimum incident risk", 0, 100, 0)
+    with st.expander("Map filters"):
+        categories = st.multiselect("Report categories", CATEGORIES, default=CATEGORIES)
+        minimum = st.slider("Minimum incident risk", 0, 100, 0)
+        show_resolved = st.checkbox("Include resolved reports")
     visible = [i for i in active if i["risk"] >= minimum and set(i["categories"]) & set(categories)]
-    show_resolved = st.checkbox("Include resolved reports")
     if st.button("Show whole city"):
         st.session_state.pop("focus_report", None)
     mapped = frame[frame.category.isin(categories)]
@@ -90,4 +91,7 @@ def render_map(frame, active, key, model, consent):
         mapped = mapped[mapped.status != "Resolved"]
     picked = map_view(mapped, visible, "city_map")
     report_map_detail(frame, picked)
-    detail_view(visible, key, model, consent, "map", picked)
+    if picked and not picked.startswith("REPORT:") and st.button("Review selected incident", type="primary"):
+        st.session_state.queue_pending_incident = picked
+        st.session_state.navigate_to = "Emerging Incidents"
+        st.rerun()

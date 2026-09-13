@@ -20,9 +20,21 @@ def render_sidebar():
         st.caption("Your submitted reports" if workspace == "Live" else "Demo reports · Simulated conditions")
         names = {"Command Center": "Overview", "Report an Issue": "Add a report", "Emerging Incidents": "Incidents",
                  "Reports": "Report records", "City Map": "City map", "Analytics": "Trends", "AI Intelligence": "How it works"}
+        st.session_state.setdefault("nav_page", "Command Center")
         if "navigate_to" in st.session_state:
             st.session_state.nav_page = st.session_state.pop("navigate_to")
-        page = st.radio("Navigation", list(names), key="nav_page", format_func=lambda name: names[name], label_visibility="collapsed")
+        def navigate(target):
+            st.session_state.nav_page = target
+        st.button("Add a report", key="nav_submit", type="primary", use_container_width=True,
+                  icon=":material/add:", on_click=navigate, args=("Report an Issue",))
+        st.markdown('<div class="pulse-overline pulse-nav-label">WORKSPACE</div>', unsafe_allow_html=True)
+        icons = {"Command Center": "dashboard", "Emerging Incidents": "radar", "Reports": "list_alt",
+                 "City Map": "map", "Analytics": "bar_chart"}
+        for target in icons:
+            with st.container(key="nav_current" if st.session_state.nav_page == target else "nav_"+icons[target]):
+                st.button(names[target], key="nav_button_"+target, use_container_width=True,
+                          icon=":material/"+icons[target]+":", on_click=navigate, args=(target,))
+        page = st.session_state.nav_page
         st.divider()
         with st.popover("Settings", use_container_width=True):
             with st.expander("Analysis settings"):
@@ -69,5 +81,6 @@ def render_sidebar():
                         st.rerun()
                     except (ValueError, TypeError) as exc:
                         st.error(str(exc))
+        st.button("How it works", icon=":material/help_outline:", on_click=navigate, args=("AI Intelligence",), use_container_width=True)
         st.caption("Session only · Back up reports in Settings")
     return workspace, page, names, mode, radius, window, key, model, consent

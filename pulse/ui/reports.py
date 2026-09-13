@@ -147,7 +147,8 @@ def render_submission(frame, active, clock, key, model, consent):
         if b.button("Show new report on map"):
             st.session_state.navigate_to = "City Map"
             st.rerun()
-    report_register(frame, active, "submission_records", compact=True)
+    with st.expander("Recent reports", expanded="last_submission" in st.session_state):
+        report_register(frame, active, "submission_records", compact=True)
 
 
 def render_records(frame, active):
