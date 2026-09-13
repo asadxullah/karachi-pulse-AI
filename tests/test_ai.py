@@ -65,6 +65,11 @@ class AIIntegration(unittest.TestCase):
             "pulse.ui.ai_settings.test_connection", return_value=(True, None)
         ) as probe:
             app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=30).run()
+            self.assertEqual(app.text_input(key="ai_model").value, "gemini-3.5-flash")
+            self.assertTrue(app.checkbox(key="ai_consent").value)
+            app.checkbox(key="ai_consent").uncheck().run()
+            self.assertFalse(app.checkbox(key="ai_consent").value)
+            self.assertTrue(any(b.label == "Assistant" for b in app.button))
             app.text_input(key="ai_model").set_value("3.7").run()
             next(b for b in app.button if b.label == "Load available models").click().run()
             app.selectbox(key="ai_available_choice").set_value("gemini-test").run()
