@@ -52,3 +52,14 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked
 .pulse-note{border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;font-size:14px;color:var(--muted)}
 @media(max-width:760px){.block-container{padding:3.5rem 1rem 1.5rem}.pulse-title h1{font-size:1.65rem!important}[data-testid="stMetric"]{padding:10px}[data-testid="stMetricValue"]{font-size:1.45rem}.pulse-topline{font-size:12px}.pulse-context{margin-bottom:12px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+/* Assistant: readable measure, restrained avatars and compact actions. */
+.st-key-pulse_chat{max-width:860px;margin:0 auto}
+.st-key-pulse_chat [data-testid="stChatMessage"]{padding:18px 20px;border-radius:14px;gap:12px;margin-bottom:8px;background:#ffffff;border:1px solid #e2e9e5}
+.st-key-pulse_chat [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]){background:#eaf3ef;border-color:#d6e5dd}
+.st-key-pulse_chat [data-testid="stChatMessageAvatarUser"],.st-key-pulse_chat [data-testid="stChatMessageAvatarAssistant"]{background:#226553;color:#ffffff}
+.st-key-pulse_chat [data-testid="stChatMessage"] p{font-size:15px;line-height:1.65;margin-bottom:8px;color:#203b32}
+.st-key-pulse_chat [data-testid="stChatMessage"] button{min-height:34px;padding:4px 12px;border-radius:8px}
+.st-key-pulse_chat [data-testid="stChatInput"]{border:1px solid #afc5ba;border-radius:14px;background:#fff}
+.chat-welcome{text-align:center;padding:48px 12px 24px}.chat-welcome h2{font-size:26px!important;letter-spacing:-.6px}.chat-welcome p{color:#486257;font-size:15px}
+@media(max-width:760px){.st-key-pulse_chat [data-testid="stChatMessage"]{padding:12px;gap:8px}.chat-welcome{padding:24px 8px 16px}}

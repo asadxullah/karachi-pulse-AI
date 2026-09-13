@@ -36,7 +36,6 @@ def render_sidebar():
                 st.button(names[target], key="nav_button_"+target, use_container_width=True,
                           icon=":material/"+icons[target]+":", on_click=navigate, args=(target,))
         st.button("Assistant", icon=":material/chat_bubble_outline:", on_click=navigate, args=("Assistant",), use_container_width=True)
-        st.caption("AI update 2 · Gemini summaries + Assistant")
         page = st.session_state.nav_page
         st.divider()
         with st.popover("Settings", use_container_width=True):

@@ -1,7 +1,5 @@
 """Incident queue, explainability, recommendations and review workflow."""
 
-import hashlib
-import json
 import base64
 import pandas as pd
 import plotly.express as px
@@ -33,26 +31,19 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
     iid = st.selectbox("Incident intelligence", ids, key=widget,
                        format_func=lambda x: next(f'{i["area"]} · {i["title"]} · {i["risk"]}/100' for i in incidents if i["id"] == x))
     inc = next(i for i in incidents if i["id"] == iid)
-    signature = hashlib.sha256(json.dumps({"response_version": 2, "id": iid, "reports": sorted(inc["related"].report_id),
-        "factors": inc["factors"], "weather": inc["weather"], "model": model}, sort_keys=True).encode()).hexdigest()
-    if st.button("Explain with AI", disabled=not (key and consent), key=prefix+"_generate", help="Optional Gemini explanation. Enable AI processing in Settings."):
-        with st.spinner("Preparing a grounded hypothesis and response…"):
-            st.session_state.responses[signature] = response_agent(inc, key, model)
-    response = st.session_state.responses.get(signature) or response_agent(inc)
-    if response.get("ai_error"):
-        st.warning(response["ai_error"])
+    response = response_agent(inc)
     st.markdown(f'### {inc["title"]}')
     a, b, c = st.columns(3)
     a.metric("PULSE risk", f'{inc["risk"]}/100', f'{inc["delta"]:+d} since prior evaluation' if inc["delta"] is not None else None,
              delta_color="inverse")
     b.metric("Evidence confidence", f'{inc["confidence"]}%')
     c.metric("Distinct / total signals", f'{inc["signals"]} / {inc["reports"]}')
-    st.caption(f'{inc["id"]} · {inc["level"]} · {inc["priority"]} · {response["method"]}')
+    st.caption(f'{inc["id"]} · {inc["level"]} · {inc["priority"]}')
     tabs = st.tabs(["Summary & actions", "Related reports", "Why this risk?", "Review status"])
     with tabs[0]:
         st.write(f'{inc["reports"]} reports across {inc["area"]} support {inc["signals"]} distinct signals involving '
                  f'{", ".join(inc["categories"])}. First signal: {local_time(inc["first_signal"])} PKT.')
-        st.markdown("**Possible Cause / AI Hypothesis — unconfirmed**")
+        st.markdown("**Possible cause — requires inspection**")
         st.write(response["hypothesis"])
         st.markdown("**Potential impact**")
         st.write(response["potential_impact"])
