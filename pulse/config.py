@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 PKT = ZoneInfo("Asia/Karachi")
 
 # Optional GEMINI_MODEL in Streamlit Secrets overrides this default.
-DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash"
 
 
 CATEGORIES = ["Sewage", "Drainage", "Garbage", "Roads/Potholes", "Water Supply",
