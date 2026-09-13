@@ -33,7 +33,7 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
     iid = st.selectbox("Incident intelligence", ids, key=widget,
                        format_func=lambda x: next(f'{i["area"]} · {i["title"]} · {i["risk"]}/100' for i in incidents if i["id"] == x))
     inc = next(i for i in incidents if i["id"] == iid)
-    signature = hashlib.sha256(json.dumps({"id": iid, "reports": sorted(inc["related"].report_id),
+    signature = hashlib.sha256(json.dumps({"response_version": 2, "id": iid, "reports": sorted(inc["related"].report_id),
         "factors": inc["factors"], "weather": inc["weather"], "model": model}, sort_keys=True).encode()).hexdigest()
     if st.button("Explain with AI", disabled=not (key and consent), key=prefix+"_generate", help="Optional Gemini explanation. Enable AI processing in Settings."):
         with st.spinner("Preparing a grounded hypothesis and response…"):

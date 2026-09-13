@@ -16,6 +16,7 @@ def render_ai_settings():
         st.session_state.ai_key_scope = scope
     st.session_state.setdefault("ai_model", secret("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
     model = st.text_input("Gemini model", key="ai_model", help="Use the full API model ID or select a model below.")
+    st.session_state.setdefault("ai_consent", True)
     consent = st.checkbox("Allow Gemini processing of submitted text and incident summaries", key="ai_consent")
     st.caption("Assistant messages and workspace summaries also go to Google when AI is enabled. Photos and exact GPS coordinates are excluded from Assistant requests.")
     if st.button("Load available models", disabled=not key):

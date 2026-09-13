@@ -35,6 +35,8 @@ def render_sidebar():
             with st.container(key="nav_current" if st.session_state.nav_page == target else "nav_"+icons[target]):
                 st.button(names[target], key="nav_button_"+target, use_container_width=True,
                           icon=":material/"+icons[target]+":", on_click=navigate, args=(target,))
+        st.button("Assistant", icon=":material/chat_bubble_outline:", on_click=navigate, args=("Assistant",), use_container_width=True)
+        st.caption("AI update 2 · Gemini summaries + Assistant")
         page = st.session_state.nav_page
         st.divider()
         with st.popover("Settings", use_container_width=True):
@@ -78,7 +80,6 @@ def render_sidebar():
                         st.rerun()
                     except (ValueError, TypeError) as exc:
                         st.error(str(exc))
-        st.button("Assistant", icon=":material/chat_bubble_outline:", on_click=navigate, args=("Assistant",), use_container_width=True)
         st.button("How it works", icon=":material/help_outline:", on_click=navigate, args=("AI Intelligence",), use_container_width=True)
         st.caption("Session only · Back up reports in Settings")
     return workspace, page, names, mode, radius, window, key, model, consent
