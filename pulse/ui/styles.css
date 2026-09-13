@@ -1,13 +1,21 @@
-:root {color-scheme:light; --ink:#202e2b; --muted:#687671; --line:#dde4df; --accent:#226553;}
+:root {color-scheme:light; --ink:#172b26; --muted:#42564f; --line:#d6dfda; --accent:#226553;}
 .stApp {background:#f7f8f5;color:var(--ink);font-family:Arial,sans-serif}
 [data-testid="stHeader"] {background:rgba(247,248,245,.95)}
-.block-container {max-width:1200px;padding-top:2rem;padding-bottom:3rem}
+.block-container {max-width:1200px;padding-top:4rem;padding-bottom:3rem}
 section[data-testid="stSidebar"] {background:#eef1ec;border-right:1px solid var(--line)}
 section[data-testid="stSidebar"] .block-container {padding-top:2rem}
 h1,h2,h3,h4,h5,h6 {color:var(--ink)!important;letter-spacing:-.035em;font-weight:600!important}
 h1 {font-size:2.15rem!important} h2 {font-size:1.35rem!important} h3 {font-size:1.1rem!important}
 p,li,label {line-height:1.6}
-[data-testid="stCaptionContainer"] {color:var(--muted)!important}
+[data-testid="stCaptionContainer"],
+[data-testid="stCaptionContainer"] p,
+[data-testid="stCaptionContainer"] li,
+[data-testid="stCaptionContainer"] span {color:var(--muted)!important;opacity:1!important;font-size:.9rem}
+[data-testid="stWidgetLabel"],
+[data-testid="stWidgetLabel"] p,
+[data-testid="stMetricLabel"] p {color:var(--ink)!important;opacity:1!important}
+input::placeholder,textarea::placeholder {color:#52635d!important;opacity:1!important}
+input:disabled,textarea:disabled {color:#52635d!important;-webkit-text-fill-color:#52635d!important;opacity:1!important}
 [data-testid="stMetric"] {background:#fff;border:1px solid var(--line);border-radius:8px;padding:18px 20px}
 [data-testid="stMetricLabel"] {color:var(--muted)}
 [data-testid="stMetricValue"] {color:var(--ink);font-size:1.85rem;font-weight:600}
@@ -30,7 +38,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked
 .pulse-brand span {font-weight:400;color:var(--accent)}
 .pulse-topline {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:28px;color:var(--muted);font-size:12px}
 .pulse-title {margin-bottom:28px}.pulse-title h1 {margin:0;padding:0 0 8px}.pulse-title p {margin:0;color:var(--muted);max-width:700px}
-.pulse-kicker {font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.pulse-kicker {font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .pulse-card {background:white;border:1px solid var(--line);border-radius:8px;padding:16px;min-height:150px}
 .pulse-card h3 {margin:12px 0 6px;padding:0;font-size:19px!important}
 .pulse-card p {font-size:14px;margin:6px 0;color:var(--muted)}
@@ -39,7 +47,7 @@ section[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked
 .pulse-high {background:#fcf0df;color:#955819}.pulse-critical {background:#fbe9e8;color:#a53636}
 .pulse-elevated {background:#f6f1d8;color:#75601e}.pulse-moderate {background:#eaf0f6;color:#3c627f}
 .pulse-note {border-left:3px solid var(--accent);padding:8px 16px;margin:16px 0;font-size:14px;color:var(--muted)}
-@media(max-width:760px) {.block-container{padding:1.5rem 1rem}.pulse-title h1{font-size:1.7rem!important}.pulse-card{min-height:0}[data-testid="stMetricValue"]{font-size:1.5rem}}
+@media(max-width:760px) {.block-container{padding:3.5rem 1rem 1.5rem}.pulse-title h1{font-size:1.7rem!important}.pulse-card{min-height:0}[data-testid="stMetricValue"]{font-size:1.5rem}}
 .stApp {background:#f7f8fa}
 [data-testid="stHeader"] {background:rgba(247,248,250,.96)}
 section[data-testid="stSidebar"] {background:#fff}

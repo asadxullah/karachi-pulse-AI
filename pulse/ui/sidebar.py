@@ -17,7 +17,7 @@ def render_sidebar():
         st.markdown('<div class="pulse-brand">Karachi <span>PULSE</span></div>', unsafe_allow_html=True)
         workspace = st.radio("Workspace", ["Demo", "Live"], key="workspace_choice", horizontal=True)
         switch_workspace(workspace)
-        st.caption("Your submitted reports · Real clock" if workspace == "Live" else "Synthetic reports · Guided simulation")
+        st.caption("Your submitted reports" if workspace == "Live" else "Demo reports · Simulated conditions")
         names = {"Command Center": "Overview", "Report an Issue": "Add a report", "Emerging Incidents": "Incidents",
                  "Reports": "Report records", "City Map": "City map", "Analytics": "Trends", "AI Intelligence": "How it works"}
         if "navigate_to" in st.session_state:
@@ -69,5 +69,5 @@ def render_sidebar():
                         st.rerun()
                     except (ValueError, TypeError) as exc:
                         st.error(str(exc))
-        st.caption("Session workspace · No shared database")
+        st.caption("Session only · Back up reports in Settings")
     return workspace, page, names, mode, radius, window, key, model, consent

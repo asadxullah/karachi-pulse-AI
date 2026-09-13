@@ -41,19 +41,19 @@ def main():
     data_label = "Submitted reports" if workspace == "Live" else "Demo workspace"
     st.markdown(f'<div class="pulse-topline"><span>Karachi / City operations</span><span>{data_label} · {source_label} · {local_time(clock)} PKT</span></div>', unsafe_allow_html=True)
     subtitles = {
-        "Command Center": "A clear view of emerging issues, where they are happening, and what needs attention.",
-        "Report an Issue": "Share what you see. Nearby reports help reveal a bigger problem.",
-        "Reports": "Every submitted report, whether isolated, duplicated or linked to an incident.",
+        "Command Center": "Priority incidents and recent reports.",
+        "Report an Issue": "Describe the issue and attach a photo if available.",
+        "Reports": "Search, review and update submitted reports.",
         "Emerging Incidents": "Review related reports and decide what should be inspected next.",
         "City Map": "Explore reports and emerging issues across Karachi.",
         "Analytics": "Follow report patterns and changes in incident risk.",
-        "AI Intelligence": "Understand how reports become evidence and how priorities are calculated.",
+        "AI Intelligence": "How incident detection and risk scoring work.",
     }
     st.markdown(f'<div class="pulse-title"><h1>{names[page]}</h1><p>{subtitles[page]}</p></div>', unsafe_allow_html=True)
     if "restore_notice" in st.session_state:
         st.success(st.session_state.pop("restore_notice"))
-    if workspace == "Live":
-        st.caption("Live workspace uses your reports and the current clock. Analysis refreshes approximately every minute while connected.")
+    if workspace == "Live" and page == "Command Center":
+        st.caption("Updates every minute while connected.")
     today = clock.astimezone(PKT).date()
     metrics = [
         ("Active Reports", int((frame.status != "Resolved").sum())), ("Emerging Incidents", len(active)),
@@ -76,6 +76,6 @@ def main():
     else:
         render_about(active, key, model, consent)
     st.divider()
-    st.caption("Karachi PULSE · Decision support for city teams. Findings are unconfirmed until inspected. No authorities are contacted automatically.")
+    st.caption("Findings require inspection. Reports are not sent to authorities automatically.")
     if workspace == "Live":
         live_refresh()

@@ -41,8 +41,7 @@ def report_register(frame, incidents, prefix, compact=False):
     if compact:
         display = display[["Report ID", "Area", "Description", "Category", "Status"]].head(5)
     st.dataframe(display, hide_index=True, use_container_width=True)
-    st.caption(f'{len(frame)} stored reports · {int((frame.duplicate_of == "").sum())} distinct signals. '
-               'A report is recorded immediately; an incident needs at least 3 related, nearby signals.')
+    st.caption(f'{len(frame)} reports · {int((frame.duplicate_of == "").sum())} distinct signals')
     if compact or view.empty:
         return
     st.download_button("Export filtered records (CSV)", display.to_csv(index=False).encode("utf-8-sig"),
@@ -76,23 +75,22 @@ def report_register(frame, incidents, prefix, compact=False):
 
 
 def render_submission(frame, active, clock, key, model, consent):
-    st.caption("English, Urdu and Roman Urdu are supported. This prototype does not submit official complaint tickets.")
     workspace = st.session_state.get("active_workspace", "Demo")
     token_key = "report_draft_"+workspace
     st.session_state.setdefault(token_key, uuid.uuid4().hex)
     token = st.session_state[token_key]
-    st.caption("Use this form at the incident location. Your browser will ask permission; location is attached when you submit.")
+    st.caption("Allow location access if you are at the incident. Otherwise, select the approximate-area option below.")
     location = capture_location(key="capture_"+workspace+token, default=None)
     with st.form("report_form", clear_on_submit=False):
         description = st.text_area("What did you observe?", max_chars=2000,
-            placeholder="Gali mein gutter overflow ho raha hai…", key="description_"+token)
+            placeholder="Gali mein gutter overflow ho raha hai…", key="description_"+token,
+            help="English, Urdu and Roman Urdu are supported.")
         a, b, c = st.columns(3)
         area = a.selectbox("Area", list(AREAS), help="Used only for the approximate-area fallback. Browser locations use the nearest listed area as a label.")
         category = b.selectbox("Category", ["Auto classify"]+CATEGORIES)
         severity = c.slider("Reported severity: 1 minor → 5 urgent", 1, 5, 2)
-        st.caption("With location access, the area label is estimated automatically and the map uses your captured position.")
-        approximate = st.checkbox("Use the selected area's approximate center instead of my current location", key="approximate_"+token)
-        st.caption("Use this fallback only if location is unavailable or you are reporting remotely. It is not an exact incident location.")
+        approximate = st.checkbox("Use the selected area's approximate center instead of my current location", key="approximate_"+token,
+                                  help="For remote reports or unavailable location access. The map will show the area's center, not an exact incident location.")
         source = st.selectbox("Source", ["Citizen web report", "Community volunteer", "Field observation", "Social media observation"])
         upload = st.file_uploader("Add a photo (optional)", type=["jpg", "jpeg", "png", "webp"], key="photo_"+token,
                                   help="Maximum 5 MB and 20 megapixels. Photos are compressed, saved with the report and included in JSON backups. Not sent to Gemini.")
@@ -150,7 +148,6 @@ def render_submission(frame, active, clock, key, model, consent):
             st.session_state.navigate_to = "City Map"
             st.rerun()
     report_register(frame, active, "submission_records", compact=True)
-    st.caption("Missing coordinates use the approximate area center. Risk severity uses the submitted value; AI-estimated severity is advisory. Rules can miss slang and negation.")
 
 
 def render_records(frame, active):
