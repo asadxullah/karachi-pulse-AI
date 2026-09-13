@@ -126,7 +126,9 @@ class InterfaceWorkflows(unittest.TestCase):
         self.check()
 
     def page(self, value):
-        self.app.radio(key="nav_page").set_value(value).run()
+        names = {"Command Center": "Overview", "Report an Issue": "Add a report", "Emerging Incidents": "Incidents",
+                 "Reports": "Report records", "City Map": "City map", "Analytics": "Trends", "AI Intelligence": "How it works"}
+        self.button(names[value])
         self.check()
 
     def mode(self, value):
@@ -196,7 +198,7 @@ class InterfaceWorkflows(unittest.TestCase):
         iid = button.key.removeprefix("review_")
         button.click().run()
         self.check()
-        self.assertEqual(self.app.radio(key="nav_page").value, "Emerging Incidents")
+        self.assertEqual(self.app.session_state["nav_page"], "Emerging Incidents")
         self.assertEqual(self.app.selectbox(key="selected_review_incident").value, iid)
         self.button("Refresh overview")
         self.assertEqual(self.app.selectbox(key="selected_review_incident").value, iid)
