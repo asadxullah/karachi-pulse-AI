@@ -12,6 +12,7 @@ from pulse.data import report_frame
 from pulse.services import live_weather, simulated_weather
 from pulse.session import init_state, live_refresh, monitor
 from pulse.ui.about import render_about
+from pulse.ui.chat import render_chat
 from pulse.ui.analytics import render_analytics
 from pulse.ui.incidents import render_incidents
 from pulse.ui.maps import render_map
@@ -48,6 +49,7 @@ def main():
         "City Map": "Explore reports and emerging issues across Karachi.",
         "Analytics": "Follow report patterns and changes in incident risk.",
         "AI Intelligence": "How incident detection and risk scoring work.",
+        "Assistant": "Ask about your workspace or get help using PULSE.",
     }
     st.markdown(f'<div class="pulse-title"><h1>{names[page]}</h1><p>{subtitles[page]}</p></div>', unsafe_allow_html=True)
     if "restore_notice" in st.session_state:
@@ -73,6 +75,8 @@ def main():
         render_map(frame, active, key, model, consent)
     elif page == 'Analytics':
         render_analytics(frame, active)
+    elif page == "Assistant":
+        render_chat(frame, active, weather, workspace, key, model, consent, radius, window)
     else:
         render_about(active, key, model, consent)
     st.divider()

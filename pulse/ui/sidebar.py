@@ -8,6 +8,7 @@ from pulse.config import DEFAULT_GEMINI_MODEL, WORKSPACE_KEYS
 from pulse.data import export_reports, import_reports
 from pulse.demo import demo_data
 from pulse.services import live_weather, secret
+from pulse.ui.ai_settings import render_ai_settings
 from pulse.session import switch_workspace
 from pulse.utils import now_utc
 
@@ -19,7 +20,7 @@ def render_sidebar():
         switch_workspace(workspace)
         st.caption("Your submitted reports" if workspace == "Live" else "Demo reports · Simulated conditions")
         names = {"Command Center": "Overview", "Report an Issue": "Add a report", "Emerging Incidents": "Incidents",
-                 "Reports": "Report records", "City Map": "City map", "Analytics": "Trends", "AI Intelligence": "How it works"}
+                 "Reports": "Report records", "City Map": "City map", "Analytics": "Trends", "AI Intelligence": "How it works", "Assistant": "Assistant"}
         st.session_state.setdefault("nav_page", "Command Center")
         if "navigate_to" in st.session_state:
             st.session_state.nav_page = st.session_state.pop("navigate_to")
@@ -44,12 +45,7 @@ def render_sidebar():
                 window = st.slider("Look back (hours)", 3, 48, 24, 3)
                 st.caption("At least 3 distinct, related reports are needed to detect an incident.")
             with st.expander("AI connection"):
-                saved_key = secret("GEMINI_API_KEY")
-                key = saved_key or st.text_input("Gemini API key (session only)", type="password", key="temporary_api_key")
-                model = st.text_input("Gemini model", value=secret("GEMINI_MODEL", DEFAULT_GEMINI_MODEL))
-                consent = st.checkbox("Allow Gemini processing of submitted text and incident summaries", value=False)
-                st.caption("Avoid personal information. Keys are never written to disk. Reports stay in this browser session; Gemini requests use Google's service.")
-                st.caption("Gemini configured" if key else "Offline intelligence available • no key required")
+                key, model, consent = render_ai_settings()
             st.button("Refresh overview", use_container_width=True)
             if mode == "Live weather" and st.button("Refresh weather"):
                 live_weather.clear()
@@ -64,6 +60,7 @@ def render_sidebar():
                     st.session_state.update(stage=0, offset=0, registry={}, history=[], responses={},
                                             last_fingerprint="", demo_log=[])
                     st.session_state.pop("focus_report", None)
+                    st.session_state.pop("chat_"+workspace, None)
                     st.rerun()
             with st.expander("Report backup & restore"):
                 st.caption("Navigation and Refresh overview keep your reports. A browser reload may start a new session. Download a backup to retain them; restore merges reports by ID.")
@@ -81,6 +78,7 @@ def render_sidebar():
                         st.rerun()
                     except (ValueError, TypeError) as exc:
                         st.error(str(exc))
+        st.button("Assistant", icon=":material/chat_bubble_outline:", on_click=navigate, args=("Assistant",), use_container_width=True)
         st.button("How it works", icon=":material/help_outline:", on_click=navigate, args=("AI Intelligence",), use_container_width=True)
         st.caption("Session only · Back up reports in Settings")
     return workspace, page, names, mode, radius, window, key, model, consent

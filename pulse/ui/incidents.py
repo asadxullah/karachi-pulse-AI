@@ -39,6 +39,8 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
         with st.spinner("Preparing a grounded hypothesis and response…"):
             st.session_state.responses[signature] = response_agent(inc, key, model)
     response = st.session_state.responses.get(signature) or response_agent(inc)
+    if response.get("ai_error"):
+        st.warning(response["ai_error"])
     st.markdown(f'### {inc["title"]}')
     a, b, c = st.columns(3)
     a.metric("PULSE risk", f'{inc["risk"]}/100', f'{inc["delta"]:+d} since prior evaluation' if inc["delta"] is not None else None,
