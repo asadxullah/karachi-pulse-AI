@@ -5,10 +5,54 @@ import json
 import pandas as pd
 import re
 import uuid
+import base64
+import binascii
+from io import BytesIO
+from PIL import Image, ImageOps, UnidentifiedImageError
 from pulse.agents.correlation import duplicate_agent
 from pulse.agents.signal import signal_agent
 from pulse.config import AREAS, CATEGORIES, MAX_REPORTS
 from pulse.models import SignalOutput
+
+
+def prepare_photo(raw):
+    """Decode and re-encode a bounded photo, stripping EXIF and embedded metadata."""
+    if not isinstance(raw, bytes) or not raw or len(raw) > 5_000_000:
+        raise ValueError("Choose a JPG, PNG or WebP photo smaller than 5 MB.")
+    try:
+        with Image.open(BytesIO(raw)) as source:
+            if source.format not in {"JPEG", "PNG", "WEBP"} or source.width*source.height > 20_000_000:
+                raise ValueError("Use a JPG, PNG or WebP photo of at most 20 megapixels.")
+            source.load()
+            converted = ImageOps.exif_transpose(source).convert("RGB")
+            converted.thumbnail((1280, 1280))
+            clean = Image.new("RGB", converted.size)
+            clean.paste(converted)
+            while True:
+                output = BytesIO()
+                clean.save(output, format="JPEG", quality=75, optimize=True)
+                if output.tell() <= 350_000:
+                    return {"mime": "image/jpeg", "base64": base64.b64encode(output.getvalue()).decode("ascii")}
+                clean.thumbnail((max(1, int(clean.width*.8)), max(1, int(clean.height*.8))))
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as exc:
+        raise ValueError("This file is not a readable supported image.") from exc
+
+
+def restore_photo(value):
+    if value is None:
+        return None
+    try:
+        if not isinstance(value, dict) or value.get("mime") != "image/jpeg" or len(value["base64"]) > 470_000:
+            raise ValueError("Invalid photo attachment in backup.")
+        raw = base64.b64decode(value["base64"], validate=True)
+        # Validate the image without changing already-normalized bytes on every restore.
+        with Image.open(BytesIO(raw)) as photo:
+            if photo.format != "JPEG" or max(photo.size) > 1280:
+                raise ValueError("Invalid photo attachment dimensions.")
+            photo.verify()
+        return {"mime": "image/jpeg", "base64": value["base64"]}
+    except (KeyError, TypeError, binascii.Error, OSError, Image.DecompressionBombError) as exc:
+        raise ValueError("Invalid photo attachment in backup.") from exc
 
 
 def make_report(text, area, timestamp, category=None, severity=2, source="Synthetic demo",
@@ -42,8 +86,8 @@ def export_reports(rows, workspace):
 
 def import_reports(payload, existing, workspace, clock):
     """Validate the complete backup before mutating anything; merge by report ID."""
-    if len(payload) > 5_000_000:
-        raise ValueError("Backup must be smaller than 5 MB.")
+    if len(payload) > 50_000_000:
+        raise ValueError("Backup must be smaller than 50 MB, including photos.")
     try:
         data = json.loads(payload)
         if not isinstance(data, dict) or data.get("format") != "karachi-pulse-reports-v1":
@@ -89,10 +133,15 @@ def import_reports(payload, existing, workspace, clock):
                               entry["source"], lat, lon, ai, workspace == "Demo" and bool(entry.get("scenario")))
             row.update(report_id=rid, status=entry["status"],
                        location_basis="Restored coordinates (unverified)")
+            photo = restore_photo(entry.get("photo"))
+            if photo:
+                row["photo"] = photo
             if rid not in existing_by_id:
                 checked.append(row)
         if len(existing)+len(checked) > MAX_REPORTS:
             raise ValueError("Restoring this backup would exceed the 1,000-report workspace limit.")
+        if sum(len(r.get("photo", {}).get("base64", "")) for r in existing+checked) > 28_000_000:
+            raise ValueError("This workspace supports about 20 MB of compressed photos. Export before clearing space.")
         return existing+checked, len(checked)
     except (KeyError, TypeError, OverflowError, json.JSONDecodeError) as exc:
         raise ValueError("Invalid backup structure. Choose an original PULSE JSON backup.") from exc
