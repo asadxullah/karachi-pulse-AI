@@ -70,6 +70,7 @@ class AIIntegration(unittest.TestCase):
             app.checkbox(key="ai_consent").uncheck().run()
             self.assertFalse(app.checkbox(key="ai_consent").value)
             self.assertTrue(any(b.label == "Assistant" for b in app.button))
+            self.assertFalse(any("AI update 2" in c.value for c in app.caption))
             app.text_input(key="ai_model").set_value("3.7").run()
             next(b for b in app.button if b.label == "Load available models").click().run()
             app.selectbox(key="ai_available_choice").set_value("gemini-test").run()
@@ -79,6 +80,16 @@ class AIIntegration(unittest.TestCase):
             probe.assert_called_once_with("fake", "gemini-test")
             self.assertTrue(any("Gemini connected" in v.value for v in app.success))
             self.assertFalse(app.exception)
+
+    def test_incident_summary_needs_no_ai_button(self):
+        with patch("pulse.services.requests.get", side_effect=requests.Timeout), patch("pulse.ui.ai_settings.secret", side_effect=lambda n, default="": default), patch("pulse.agents.response.gemini_json", return_value=None) as provider:
+            app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "app.py"), default_timeout=30).run()
+            next(b for b in app.button if b.label == "Incidents").click().run()
+            self.assertFalse(any(b.label == "Explain with AI" for b in app.button))
+            self.assertTrue(any("Possible cause" in m.value for m in app.markdown))
+            self.assertFalse(app.exception)
+            # Empty key means deterministic response only; no provider request.
+            self.assertTrue(all(not c.args[0] for c in provider.call_args_list))
 
     def test_chat_navigation_isolation_and_clear(self):
         with patch("pulse.services.requests.get", side_effect=requests.Timeout), patch("pulse.ui.ai_settings.secret", side_effect=lambda n, default="": default):
