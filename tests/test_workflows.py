@@ -1,5 +1,9 @@
 """Run with: python -m unittest discover -s tests -v"""
 import json
+import time
+from io import BytesIO
+from PIL import Image
+import streamlit as st
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -100,6 +104,10 @@ class InterfaceWorkflows(unittest.TestCase):
         self.weather_patch.start()
         self.key_patch = patch("pulse.ui.sidebar.secret", side_effect=lambda name, default="": default)
         self.key_patch.start()
+        self.location_patch = patch("pulse.ui.reports.capture_location", side_effect=lambda **kwargs: {
+            "status": "ok", "latitude": 24.9234, "longitude": 67.0920,
+            "accuracy": 15, "timestamp": time.time()*1000})
+        self.location_patch.start()
         live_weather.clear()
         self.app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30).run()
         self.check()
@@ -107,6 +115,7 @@ class InterfaceWorkflows(unittest.TestCase):
     def tearDown(self):
         self.weather_patch.stop()
         self.key_patch.stop()
+        self.location_patch.stop()
         live_weather.clear()
 
     def check(self):
@@ -180,6 +189,42 @@ class InterfaceWorkflows(unittest.TestCase):
         self.assertEqual(self.app.session_state["offset"], 0)
         for name in ["Command Center", "Reports", "City Map", "Analytics", "AI Intelligence", "Emerging Incidents"]:
             self.page(name)
+
+    def test_review_button_opens_selected_incident_and_survives_rerun(self):
+        self.page("Command Center")
+        button = next(b for b in self.app.button if b.label == "Review incident →")
+        iid = button.key.removeprefix("review_")
+        button.click().run()
+        self.check()
+        self.assertEqual(self.app.radio(key="nav_page").value, "Emerging Incidents")
+        self.assertEqual(self.app.selectbox(key="selected_review_incident").value, iid)
+        self.button("Refresh overview")
+        self.assertEqual(self.app.selectbox(key="selected_review_incident").value, iid)
+
+    def test_location_failure_preserves_draft_and_does_not_submit(self):
+        self.mode("Live")
+        with patch("pulse.ui.reports.capture_location", return_value={"status": "error"}):
+            self.submit(*EXAMPLES[0])
+            self.assertEqual(len(self.app.session_state["reports"]), 0)
+            self.assertEqual(self.app.text_area[0].value, EXAMPLES[0][0])
+            self.assertTrue(any("Allow location" in e.value for e in self.app.error))
+
+    def test_photo_is_saved_with_captured_coordinates(self):
+        self.mode("Live")
+        image = BytesIO()
+        Image.new("RGB", (64, 64), "green").save(image, format="PNG")
+        original = st.file_uploader
+        def uploader(label, *args, **kwargs):
+            return BytesIO(image.getvalue()) if label == "Add a photo (optional)" else original(label, *args, **kwargs)
+        with patch("pulse.ui.reports.st.file_uploader", side_effect=uploader):
+            self.submit(*EXAMPLES[0])
+            report = self.app.session_state["reports"][0]
+            self.assertTrue(report["photo"]["base64"])
+            self.assertEqual(report["latitude"], 24.9234)
+            self.assertIn("Browser location", report["location_basis"])
+            with patch("pulse.ui.reports.st.image", wraps=st.image) as rendered:
+                self.page("Reports")
+                self.assertTrue(any(call.kwargs.get("caption") == "Attached report photo" for call in rendered.call_args_list))
 
 
 if __name__ == "__main__":
