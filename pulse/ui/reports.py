@@ -1,10 +1,13 @@
 """Report submission, searchable records, editing and export UI."""
 
 import streamlit as st
+import base64
+import uuid
 from pulse.agents.signal import signal_agent
 from pulse.config import AREAS, CATEGORIES, MAX_REPORTS
-from pulse.data import make_report
-from pulse.utils import local_time
+from pulse.data import make_report, prepare_photo
+from pulse.ui.location import capture_location, checked_location
+from pulse.utils import local_time, haversine
 
 
 def report_register(frame, incidents, prefix, compact=False):
@@ -51,6 +54,9 @@ def report_register(frame, incidents, prefix, compact=False):
     rid = st.selectbox("Inspect a report", ids, key=selected_key)
     row = view[view.report_id == rid].iloc[0]
     st.write(row.complaint_text)
+    saved_report = next((r for r in st.session_state.reports if r["report_id"] == rid), {})
+    if saved_report.get("photo"):
+        st.image(base64.b64decode(saved_report["photo"]["base64"]), caption="Attached report photo", width=360)
     st.caption(f'{row.area} · {row.latitude:.5f}, {row.longitude:.5f} · {row.location_basis} · {row.source}')
     if st.button("Locate on city map", key=prefix+"_locate"):
         st.session_state.focus_report = rid
@@ -71,17 +77,25 @@ def report_register(frame, incidents, prefix, compact=False):
 
 def render_submission(frame, active, clock, key, model, consent):
     st.caption("English, Urdu and Roman Urdu are supported. This prototype does not submit official complaint tickets.")
-    with st.form("report_form", clear_on_submit=True):
+    workspace = st.session_state.get("active_workspace", "Demo")
+    token_key = "report_draft_"+workspace
+    st.session_state.setdefault(token_key, uuid.uuid4().hex)
+    token = st.session_state[token_key]
+    st.caption("Use this form at the incident location. Your browser will ask permission; location is attached when you submit.")
+    location = capture_location(key="capture_"+workspace+token, default=None)
+    with st.form("report_form", clear_on_submit=False):
         description = st.text_area("What did you observe?", max_chars=2000,
-            placeholder="Gali mein gutter overflow ho raha hai…")
+            placeholder="Gali mein gutter overflow ho raha hai…", key="description_"+token)
         a, b, c = st.columns(3)
-        area = a.selectbox("Area", list(AREAS))
+        area = a.selectbox("Area", list(AREAS), help="Used only for the approximate-area fallback. Browser locations use the nearest listed area as a label.")
         category = b.selectbox("Category", ["Auto classify"]+CATEGORIES)
         severity = c.slider("Reported severity: 1 minor → 5 urgent", 1, 5, 2)
-        a, b, c = st.columns(3)
-        latitude = a.text_input("Latitude (optional)")
-        longitude = b.text_input("Longitude (optional)")
-        source = c.selectbox("Source", ["Citizen web report", "Community volunteer", "Field observation", "Social media observation"])
+        st.caption("With location access, the area label is estimated automatically and the map uses your captured position.")
+        approximate = st.checkbox("Use the selected area's approximate center instead of my current location", key="approximate_"+token)
+        st.caption("Use this fallback only if location is unavailable or you are reporting remotely. It is not an exact incident location.")
+        source = st.selectbox("Source", ["Citizen web report", "Community volunteer", "Field observation", "Social media observation"])
+        upload = st.file_uploader("Add a photo (optional)", type=["jpg", "jpeg", "png", "webp"], key="photo_"+token,
+                                  help="Maximum 5 MB and 20 megapixels. Photos are compressed, saved with the report and included in JSON backups. Not sent to Gemini.")
         submitted = st.form_submit_button("Analyze & add signal", type="primary")
     if submitted:
         try:
@@ -90,26 +104,36 @@ def render_submission(frame, active, clock, key, model, consent):
             if len(description.strip()) < 8 or not any(c.isalnum() for c in description):
                 raise ValueError("Please enter at least eight characters describing the issue.")
             lat = lon = None
-            if latitude.strip() or longitude.strip():
-                if not latitude.strip() or not longitude.strip():
-                    raise ValueError("Provide both latitude and longitude, or leave both blank.")
-                lat, lon = float(latitude), float(longitude)
-                if not (24.65 <= lat <= 25.65 and 66.5 <= lon <= 67.8):
-                    raise ValueError("Coordinates must be inside the approximate Karachi service bounds (24.65–25.65 N, 66.5–67.8 E).")
+            accuracy = None
+            if not approximate:
+                lat, lon, accuracy = checked_location(location)
+                area = min(AREAS, key=lambda name: haversine(lat, lon, AREAS[name][0], AREAS[name][1]))
+            photo = prepare_photo(upload.getvalue()) if upload else None
+            if photo and len(photo["base64"])+sum(len(r.get("photo", {}).get("base64", "")) for r in st.session_state.reports) > 28_000_000:
+                raise ValueError("Photo storage for this session is full. Download a backup before clearing reports.")
             with st.spinner("Signal Agent is analyzing the report…"):
                 ai = signal_agent(description.strip(), key if consent else "", model)
             row = make_report(description.strip(), area, clock,
                 None if category == "Auto classify" else category, severity, source, lat, lon, ai)
+            if accuracy is not None:
+                row["location_basis"] = f"Browser location (estimated accuracy {accuracy:.0f} m; nearest-area label)"
+                row["location_accuracy_m"] = accuracy
+            if photo:
+                row["photo"] = photo
             st.session_state.reports.append(row)
             st.session_state.focus_report = row["report_id"]
             st.session_state.last_submission = {"id": row["report_id"], "classification": ai,
                 "category": row["category"], "reported_severity": severity}
+            st.session_state[token_key] = uuid.uuid4().hex
             st.rerun()
         except ValueError as exc:
             st.error(str(exc))
     if "last_submission" in st.session_state:
         last = st.session_state.last_submission
         st.success(f'Signal {last["id"]} recorded · {last["category"]}')
+        saved = next((r for r in st.session_state.reports if r["report_id"] == last["id"]), {})
+        if saved.get("photo"):
+            st.image(base64.b64decode(saved["photo"]["base64"]), caption="Photo saved with this report", width=360)
         st.write(f'Category: {last["category"]} · Reported severity: {last["reported_severity"]}/5')
         with st.expander("Classification details"):
             st.json(last)

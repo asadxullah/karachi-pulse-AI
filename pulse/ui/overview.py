@@ -24,8 +24,9 @@ def render_overview(frame, active, weather, workspace, mode, key, model, consent
                         f'<h3>{html.escape(inc["area"])}</h3><p>{short}</p>'
                         f'<div class="pulse-card-foot"><span>{inc["signals"]} distinct signals</span><span>{inc["confidence"]}% confidence</span></div></div>', unsafe_allow_html=True)
             if st.button("Review incident →", key="review_"+inc["id"], use_container_width=True):
-                st.session_state.command_incident = inc["id"]
-                reviewed = inc["id"]
+                st.session_state.queue_pending_incident = inc["id"]
+                st.session_state.navigate_to = "Emerging Incidents"
+                st.rerun()
     if not active:
         st.info("No emerging incidents under the current settings.")
     st.write("")

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import base64
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -74,6 +75,13 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
         display["timestamp"] = display.timestamp.map(local_time)
         st.dataframe(display, hide_index=True, use_container_width=True)
         st.caption("Likely duplicates remain recorded but do not add risk or confidence points. Classifier confidence is separate from incident confidence.")
+        related_ids = set(inc["related"].report_id)
+        photos = [r for r in st.session_state.reports if r["report_id"] in related_ids and r.get("photo")]
+        if photos:
+            with st.expander(f"Report photos ({len(photos)})"):
+                rid = st.selectbox("Photo report", [r["report_id"] for r in photos], key=prefix+"_photo_"+iid)
+                photo_report = next(r for r in photos if r["report_id"] == rid)
+                st.image(base64.b64decode(photo_report["photo"]["base64"]), caption=photo_report["complaint_text"], width=360)
     with tabs[2]:
         st.markdown("**Why it was flagged**")
         st.write(f'• {inc["signals"]} distinct signals match the {inc["kind"]} relationship rule.')
@@ -92,7 +100,7 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
             st.write("No material score change in the latest evaluation.")
         factors = pd.DataFrame({"Factor": list(WEIGHTS), "Points": list(inc["factors"].values()), "Maximum": list(WEIGHTS.values())})
         st.plotly_chart(px.bar(factors, x="Points", y="Factor", orientation="h", range_x=[0, 20],
-                              color_discrete_sequence=["#226553"]), use_container_width=True)
+                              color_discrete_sequence=["#226553"]), use_container_width=True, key=prefix+"_risk_factors_"+iid)
         st.dataframe(factors, hide_index=True, use_container_width=True)
         with st.expander("Confidence components and model limitations"):
             st.json({k: round(v, 2) for k, v in inc["confidence_parts"].items()})
@@ -116,6 +124,20 @@ def detail_view(incidents, key, model, consent, prefix, selected=None):
 
 def render_incidents(incidents, key, model, consent):
     st.subheader("Emerging incident queue")
+    selected = st.session_state.pop("queue_pending_incident", None)
+    if selected:
+        match = next((i for i in incidents if i["id"] == selected), None)
+        if match:
+            detail_view([match], key, model, consent, "selected_review", selected)
+            st.divider()
+            st.session_state.queue_reviewed_incident = selected
+        else:
+            st.info("This incident no longer meets active detection rules. Its reports remain in Report records.")
+    elif st.session_state.get("queue_reviewed_incident"):
+        match = next((i for i in incidents if i["id"] == st.session_state.queue_reviewed_incident), None)
+        if match:
+            detail_view([match], key, model, consent, "selected_review")
+            st.divider()
     a, b, c, d = st.columns(4)
     areas = a.multiselect("Area", list(AREAS))
     cats = b.multiselect("Category", CATEGORIES)
@@ -128,7 +150,8 @@ def render_incidents(incidents, key, model, consent):
     field = {"Highest risk": "risk", "Latest activity": "latest", "Most signals": "signals", "Highest confidence": "confidence"}[order]
     filtered.sort(key=lambda x: x[field], reverse=True)
     st.dataframe(incident_table(filtered), hide_index=True, use_container_width=True)
-    detail_view(filtered, key, model, consent, "queue")
+    with st.expander("Browse incident details", expanded=not bool(st.session_state.get("queue_reviewed_incident"))):
+        detail_view(filtered, key, model, consent, "queue")
     archived = [{"Incident": iid, "Area": record.get("summary", {}).get("area", ""),
                  "Issue": record.get("summary", {}).get("title", ""),
                  "Review status": record["status"], "Detection": "No longer meets active detection rules"}
